@@ -1,0 +1,9 @@
+git clone https://github.com/[ВАШ_НИК]/vending_machine.git
+cd vending_machine
+git checkout home_work_25
+git status
+git add .
+git commit -m "feat: add CardAcceptor model and payment logic"
+git checkout master
+git merge home_work_25
+git push origin master
