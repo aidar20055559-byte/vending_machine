@@ -1,3 +1,4 @@
+
 import enums.ActionLetter;
 import model.*;
 import util.UniversalArray;
@@ -6,11 +7,9 @@ import util.UniversalArrayImpl;
 import java.util.Scanner;
 
 public class AppRunner {
-
+    private CardAcceptor cardAcceptor;
     private final UniversalArray<Product> products = new UniversalArrayImpl<>();
-
     private final CoinAcceptor coinAcceptor;
-
     private static boolean isExit = false;
 
     private AppRunner() {
@@ -23,6 +22,7 @@ public class AppRunner {
                 new Pistachios(ActionLetter.G, 130)
         });
         coinAcceptor = new CoinAcceptor(100);
+        cardAcceptor = new CardAcceptor(500);
     }
 
     public static void run() {
@@ -33,48 +33,63 @@ public class AppRunner {
     }
 
     private void startSimulation() {
+        print("---------- ---------- ----------");
         print("В автомате доступны:");
         showProducts(products);
-
+        print("Баланс карты: " + cardAcceptor.getCardBalance());
         print("Монет на сумму: " + coinAcceptor.getAmount());
 
-        UniversalArray<Product> allowProducts = new UniversalArrayImpl<>();
-        allowProducts.addAll(getAllowedProducts().toArray());
+        UniversalArray<Product> allowProducts = getAllowedProducts();
         chooseAction(allowProducts);
-
     }
 
     private UniversalArray<Product> getAllowedProducts() {
         UniversalArray<Product> allowProducts = new UniversalArrayImpl<>();
         for (int i = 0; i < products.size(); i++) {
-            if (coinAcceptor.getAmount() >= products.get(i).getPrice()) {
+            // Товар доступен, если хватает монет ИЛИ денег на карте
+            if (coinAcceptor.getAmount() >= products.get(i).getPrice() ||
+                    cardAcceptor.getCardBalance() >= products.get(i).getPrice()) {
                 allowProducts.add(products.get(i));
             }
         }
         return allowProducts;
     }
 
-    private void chooseAction(UniversalArray<Product> products) {
-        showActions(products);
+    private void chooseAction(UniversalArray<Product> allowProducts) {
+        showActions(allowProducts);
         print(" h - Выйти");
         String action = fromConsole().substring(0, 1);
+
+        if ("h".equalsIgnoreCase(action)) {
+            isExit = true;
+            return;
+        }
+
         try {
+            boolean found = false;
             for (int i = 0; i < products.size(); i++) {
-                if (products.get(i).getActionLetter().equals(ActionLetter.valueOf(action.toUpperCase()))) {
-                    coinAcceptor.setAmount(coinAcceptor.getAmount() - products.get(i).getPrice());
-                    print("Вы купили " + products.get(i).getName());
-                    break;
-                } else if ("h".equalsIgnoreCase(action)) {
-                    isExit = true;
+                if (products.get(i).getActionLetter().getValue().equalsIgnoreCase(action)) {
+                    int price = products.get(i).getPrice();
+
+                    if (coinAcceptor.getAmount() >= price) {
+                        coinAcceptor.setAmount(coinAcceptor.getAmount() - price);
+                        print("Вы купили " + products.get(i).getName() + " (оплата монетами)");
+                    } else if (cardAcceptor.getCardBalance() >= price) {
+                        cardAcceptor.setCardBalance(cardAcceptor.getCardBalance() - price);
+                        print("Вы купили " + products.get(i).getName() + " (оплата картой)");
+                    } else {
+                        print("Недостаточно средств!");
+                    }
+                    found = true;
                     break;
                 }
             }
-        } catch (IllegalArgumentException e) {
-            print("Недопустимая буква. Попрбуйте еще раз.");
-            chooseAction(products);
+            if (!found) {
+                print("Недопустимая буква. Попробуйте еще раз.");
+            }
+        } catch (Exception e) {
+            print("Ошибка при выборе действия. Попробуйте еще раз.");
         }
-
-
     }
 
     private void showActions(UniversalArray<Product> products) {
